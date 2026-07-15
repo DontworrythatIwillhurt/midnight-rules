@@ -172,6 +172,40 @@
       100% { box-shadow: 0 0 35px rgba(255, 51, 51, 0.8); border-color: #ff5555; }
     }
     
+    /* 🗺️ 剧情分支树/回溯节点排版 */
+    .tree-title {
+      font-size: 12px;
+      color: #8a7d60;
+      letter-spacing: 0.1em;
+      margin-top: 15px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      border-bottom: 1px dashed #4a3f28;
+      padding-bottom: 3px;
+    }
+    .tree-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .tree-btn {
+      background: rgba(10, 8, 5, 0.6);
+      border: 1px solid #4a3f28;
+      color: #a89670;
+      padding: 6px 10px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: 0.2s;
+    }
+    .tree-btn:hover {
+      border-color: #c8b488;
+      color: #fff;
+      background: rgba(40, 30, 20, 0.8);
+    }
+    
     #vn-auto{position:absolute;right:30px;bottom:100%;margin-bottom:6px;display:flex;gap:8px;}
     .vn-mini{font-size:11px;color:#a89670;border:1px solid #4a3f28;border-radius:14px;padding:4px 14px;background:rgba(0,0,0,.5);cursor:pointer;}
     
@@ -427,7 +461,7 @@
     };
 
     // ==========================================
-    // 3. 📖 深度剧情树
+    // 3. 📖 深度剧情树 (优化真结局视觉 + 时间回溯机制) 📖
     // ==========================================
     const STORY_NODES = {
       car1_init: {
@@ -534,7 +568,7 @@
       },
       car3_red_survive: {
         bg: "red_figure.png",
-        text: () => "你顶着刺骨的阴凉，一把抱住缩在角落里的红衣人。那身红衣散发出了比干冰还要彻骨十倍的冷气，你感觉全身的血液几乎都要冻结。\n\n然而，当外面拍窗的无数双惨白断手企图击穿玻璃时，在接触到这股极致阴寒的一瞬间，竟仿佛触电般痛苦地缩了回去！红衣人幽幽地侧过头，用完全没有眼白的声音对你轻语：『……好冷……谢谢你，陪着我……』",
+        text: () => "你顶着刺骨 of 阴凉，一把抱住缩在角落里的红衣人。那身红衣散发出了比干冰还要彻骨十倍的冷气，你感觉全身的血液几乎都要冻结。\n\n然而，当外面拍窗的无数双惨白断手企图击穿玻璃时，在接触到这股极致阴寒的一瞬间，竟仿佛触电般痛苦地缩了回去！红衣人幽幽地侧过头，用完全没有眼白的声音对你轻语：『……好冷……谢谢你，陪着我……』",
         options: () => {
           return [
             { text: "🚪 乘外面那些鬼手退去，迅速拉开门前往第四车厢", next: "car3_heaven_survived" }
@@ -571,7 +605,7 @@
         }
       },
       win_normal: {
-        bg: "win_subway.png",
+        bg: "win_subway.png", // 正常结局：温和明亮的地铁画幅
         text: () => {
           gameState.runs_completed++;
           saveGame();
@@ -580,7 +614,7 @@
         options: () => []
       },
       win_true: {
-        bg: "subway_bg.png",
+        bg: "unspeakable_entity.png", // 💡 视觉强化：真结局特制压迫感极强的古神/红衣异象大图！与普通结局温和阳光彻底形成强烈反差
         text: () => {
           gameState.runs_completed++;
           saveGame();
@@ -651,9 +685,6 @@
         }
     });
 
-    // ==========================================
-    // 🏆 核心打字机重构：完美绕过 HTML 标签卡死 🏆
-    // ==========================================
     let textTimer = null;
     function typeWriter(element, text, speed, callback) {
       element.innerHTML = "";
@@ -661,13 +692,11 @@
       
       function type() {
         if (i < text.length) {
-          // 💡 修复核心：如果遇到了 HTML 标签起始符 "<"，我们要一口气读到 ">"
           if (text.charAt(i) === '<') {
             let tagEnd = text.indexOf('>', i);
             if (tagEnd !== -1) {
-              // 吞下整个标签，直接渲染
               element.innerHTML += text.substring(i, tagEnd + 1);
-              i = tagEnd + 1; // 游标跳过标签继续
+              i = tagEnd + 1; 
             } else {
               element.innerHTML += text.charAt(i);
               i++;
@@ -732,15 +761,26 @@
 
       // 通关和普通剧情渲染
       optsBox.innerHTML = ''; 
-      
-      // 💡 渲染时统一先替换换行符，避免拆开打字
       const safeText = parsedText.replace(/\n/g, '<br>');
       
       typeWriter(line, safeText, 15, () => {
-        if (sceneKey === 'win_game' || sceneKey === 'win_normal' || sceneKey === 'win_true') {
+        // 💡 核心机制：当处于通关结局时，动态加载“章节自由跳转剧情树（Flowchart）”面板！
+        if (sceneKey === 'win_normal' || sceneKey === 'win_true') {
           dot.style.color = '#5a9a5a';
           statusTxt.innerText = '已安全';
-          optsBox.innerHTML = '<button class="vn-opt ultimate-restart" style="border-color:#5a9a5a !important; box-shadow: 0 0 20px rgba(100,223,223,0.6) !important; background: linear-gradient(180deg, #0a3a3a, #051a1a) !important;" id="btn-win-restart">✨ 脱离轮回！重返人间 ✨</button>';
+          
+          // 构建回溯剧情树界面
+          optsBox.innerHTML = `
+            <button class="vn-opt ultimate-restart" style="border-color:#5a9a5a !important; box-shadow: 0 0 20px rgba(100,223,223,0.6) !important; background: linear-gradient(180deg, #0a3a3a, #051a1a) !important;" id="btn-win-restart">✨ 重新回到循环起点 ✨</button>
+            <div class="tree-title">🌀 量子纠缠 · 剧情节点回溯</div>
+            <div class="tree-grid">
+              <button class="tree-btn" onclick="window.jumpToScene('car1_init')">📍 初始车厢一 (4:44)</button>
+              <button class="tree-btn" onclick="window.jumpToScene('car2_transition')">📍 车门交接 (工牌)</button>
+              <button class="tree-btn" onclick="window.jumpToScene('car2_init')">📍 诡异车厢二 (买票)</button>
+              <button class="tree-btn" onclick="window.jumpToScene('car3_init')">📍 尖叫车厢三 (鬼手)</button>
+              <button class="tree-btn" onclick="window.jumpToScene('car3_heaven_survived')">📍 判定车厢四 (制动)</button>
+            </div>
+          `;
           document.getElementById('btn-win-restart').onclick = triggerReset;
           return;
         }
@@ -773,6 +813,14 @@
       
       document.getElementById('vn-panel').scrollTop = 0;
     }
+
+    // 暴露给全局点击的跳转函数
+    window.jumpToScene = function(sceneKey) {
+      death.classList.remove('on');
+      dot.style.color = '#5a9a5a';
+      statusTxt.innerText = '安全';
+      showScene(sceneKey);
+    };
 
     showScene('car1_init');
   })();
