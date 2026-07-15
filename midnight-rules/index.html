@@ -7,6 +7,13 @@
 </head>
 <body style="margin:0; padding:0; background:#000; overflow:hidden; width:100vw; height:100vh;">
 
+<!-- 🎫 完美修复：首屏交互声效解锁遮罩层 -->
+<div id="vn-welcome" style="position:fixed; inset:0; z-index:9999; background:radial-gradient(circle, #1a0f08, #050302); display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:'Noto Serif SC',Georgia,serif; color:#e8dcc0; text-align:center; padding:30px; transition: opacity 0.8s ease;">
+  <div style="font-size: 28px; font-weight: bold; letter-spacing: 0.2em; color: #ff3333; text-shadow: 0 0 15px rgba(255,51,51,0.5); margin-bottom: 10px;">⚠️ 准备检票 ⚠️</div>
+  <div style="font-size: 14px; letter-spacing: 0.1em; color: #8a7d60; margin-bottom: 40px; max-width: 400px; line-height: 1.6;">本游戏包含高能音频合成器，请戴上耳机体验最佳效果。<br>规则已经制定，不要回头。</div>
+  <button id="btn-enter" style="background: linear-gradient(135deg, #420a0a, #1a0505); border: 1.5px solid #ff3333; color: #ffcccc; padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,51,51,0.4); transition: 0.3s; letter-spacing: 0.15em;">● 踏上 4:44 列车</button>
+</div>
+
 <div id="vn" style="position:relative; width:100vw; height:100vh; overflow:hidden; font-family:'Noto Serif SC',Georgia,serif; user-select:none; color:#e8dcc0;">
   <style>
     #vn *{box-sizing:border-box;}
@@ -444,6 +451,15 @@
         const toast = document.getElementById('achievement-toast');
         document.getElementById('achievement-name').innerText = ACHIEVEMENT_LIST[id].name;
         toast.classList.add('show');
+        
+        // 视觉微震动，增强解锁成就时的实感
+        document.getElementById('vn').animate([
+          { transform: 'translate(1px, 1px) rotate(0deg)' },
+          { transform: 'translate(-1px, -2px) rotate(-1deg)' },
+          { transform: 'translate(-3px, 0px) rotate(1deg)' },
+          { transform: 'translate(0px, 2px) rotate(0deg)' }
+        ], { duration: 150 });
+
         setTimeout(() => {
           toast.classList.remove('show');
         }, 4000);
@@ -461,7 +477,7 @@
     };
 
     // ==========================================
-    // 3. 📖 深度剧情树 (优化真结局视觉 + 时间回溯机制) 📖
+    // 3. 📖 深度剧情树 (图片路径改用本地相对路径) 📖
     // ==========================================
     const STORY_NODES = {
       car1_init: {
@@ -568,7 +584,7 @@
       },
       car3_red_survive: {
         bg: "red_figure.png",
-        text: () => "你顶着刺骨 of 阴凉，一把抱住缩在角落里的红衣人。那身红衣散发出了比干冰还要彻骨十倍的冷气，你感觉全身的血液几乎都要冻结。\n\n然而，当外面拍窗的无数双惨白断手企图击穿玻璃时，在接触到这股极致阴寒的一瞬间，竟仿佛触电般痛苦地缩了回去！红衣人幽幽地侧过头，用完全没有眼白的声音对你轻语：『……好冷……谢谢你，陪着我……』",
+        text: () => "你顶着刺骨的阴凉，一把抱住缩在角落里的红衣人。那身红衣散发出了比干冰还要彻骨十倍的冷气，你感觉全身的血液几乎都要冻结。\n\n然而，当外面拍窗的无数双惨白断手企图击穿玻璃时，在接触到这股极致阴寒的一瞬间，竟仿佛触电般痛苦地缩了回去！红衣人幽幽地侧过头，用完全没有眼白的声音对你轻语：『……好冷……谢谢你，陪着我……』",
         options: () => {
           return [
             { text: "🚪 乘外面那些鬼手退去，迅速拉开门前往第四车厢", next: "car3_heaven_survived" }
@@ -605,7 +621,7 @@
         }
       },
       win_normal: {
-        bg: "win_subway.png", // 正常结局：温和明亮的地铁画幅
+        bg: "win_subway.png", 
         text: () => {
           gameState.runs_completed++;
           saveGame();
@@ -614,12 +630,12 @@
         options: () => []
       },
       win_true: {
-        bg: "unspeakable_entity.png", // 💡 视觉强化：真结局特制压迫感极强的古神/红衣异象大图！与普通结局温和阳光彻底形成强烈反差
+        bg: "unspeakable_entity.png", 
         text: () => {
           gameState.runs_completed++;
           saveGame();
           setTimeout(() => { unlockAchievement('TRUE_WIN'); }, 1000);
-          return "【真结局 - 莫比乌斯解脱】\n\n你双手抱胸，静静地靠在座椅上。周围的鬼哭狼嚎、甚至顶灯的闪烁都开始疯狂地撕扯你的理智。但是，你记起了乘务员死前的哭诉——拉动阀门，这辆庞然大物才会醒来捕猎！\n\n终于，4:55，伴随一声沉闷的空气排气声，列车竟缓缓停稳了。窗外的漆黑像潮水般退去，取而代之的是你熟悉的清晨街道。\n\n红衣乘客缓缓起身，第一次转过头——那是一张清秀、温和的普通女学生脸庞。她向你深深鞠了一躬，和满车化为白雾的乘客一起飘散远去。你推开没有上锁的列车门，真正踏上了人间的土地。游戏通关！";
+          return "【真结局 - 莫比乌斯解脱】\n\n你双手抱胸，静静地靠在座椅上。周围的鬼哭狼嚎、甚至顶灯的闪烁都开始疯狂地撕扯你的理智。但是，你记起了乘务员死前的哭诉——拉动阀门，这辆庞然大物才会醒来捕猎！\n\n终于，4:55，伴随一声沉闷的空气排气声，列车竟缓缓停稳了。窗外的漆黑像潮水般退去，取而代之的是你熟悉的清晨街道。\n\n红衣乘客缓缓起身，第一次转过头——那是一张清秀、温和的普通女学生脸庞。她向你深深鞠了一躬，和满车化为白雾 of 乘客一起飘散远去。你推开没有上锁的列车门，真正踏上了人间的土地。游戏通关！";
         },
         options: () => []
       },
@@ -657,6 +673,22 @@
     const optsBox = document.getElementById('vn-opts');
     const toggleAmbient = document.getElementById('toggle-ambient');
     const btnTopReset = document.getElementById('vn-skip');
+
+    const welcomeScreen = document.getElementById('vn-welcome');
+    const btnEnter = document.getElementById('btn-enter');
+
+    // 🚀 点击检票，完美解锁并激活音频
+    btnEnter.addEventListener('click', () => {
+      synth.init();
+      synth.start();
+      toggleAmbient.innerText = "音频: 开";
+      
+      // 淡出遮罩层
+      welcomeScreen.style.opacity = '0';
+      setTimeout(() => {
+        welcomeScreen.style.display = 'none';
+      }, 800);
+    });
 
     function unlockAudio() {
         synth.init();
@@ -727,7 +759,6 @@
 
       const parsedText = typeof node.text === 'function' ? node.text() : node.text;
 
-      // 死亡逻辑
       if (sceneKey.startsWith('death')) {
         gameState.deaths_count++;
         saveGame();
@@ -759,17 +790,14 @@
         return;
       }
 
-      // 通关和普通剧情渲染
       optsBox.innerHTML = ''; 
       const safeText = parsedText.replace(/\n/g, '<br>');
       
       typeWriter(line, safeText, 15, () => {
-        // 💡 核心机制：当处于通关结局时，动态加载“章节自由跳转剧情树（Flowchart）”面板！
         if (sceneKey === 'win_normal' || sceneKey === 'win_true') {
           dot.style.color = '#5a9a5a';
           statusTxt.innerText = '已安全';
           
-          // 构建回溯剧情树界面
           optsBox.innerHTML = `
             <button class="vn-opt ultimate-restart" style="border-color:#5a9a5a !important; box-shadow: 0 0 20px rgba(100,223,223,0.6) !important; background: linear-gradient(180deg, #0a3a3a, #051a1a) !important;" id="btn-win-restart">✨ 重新回到循环起点 ✨</button>
             <div class="tree-title">🌀 量子纠缠 · 剧情节点回溯</div>
@@ -798,7 +826,6 @@
         });
       });
 
-      // 车厢名称同步
       if (sceneKey === 'car1_init' || sceneKey === 'car1_search') {
         nameTag.innerText = '车厢一 · 4:44';
       } else if (sceneKey === 'car2_transition' || sceneKey === 'car2_transition_badge') {
@@ -814,11 +841,10 @@
       document.getElementById('vn-panel').scrollTop = 0;
     }
 
-    // 暴露给全局点击的跳转函数
     window.jumpToScene = function(sceneKey) {
       death.classList.remove('on');
       dot.style.color = '#5a9a5a';
-      statusTxt.innerText = '安全';
+      statusTxt.innerText = 'safe';
       showScene(sceneKey);
     };
 
