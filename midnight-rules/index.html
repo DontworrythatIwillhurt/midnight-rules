@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>午夜规则 (Midnight Rules) - 视觉小说式排版原型</title>
+  <!-- 引入中式恐怖灵魂字体：Noto Serif SC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0; padding:0; background:#000; overflow:hidden; width:100vw; height:100vh;">
 
@@ -238,7 +242,7 @@
 
   <div id="vn-top">
     <div id="vn-status">系统状态: <b id="vn-dot">●</b> <span id="status-txt">安全</span></div>
-    <div id="vn-skip" id="btn-top-reset">重置 ↻</div>
+    <div id="vn-skip">重置 ↻</div>
   </div>
   <div id="vn-side">
     <div class="vn-ic" id="btn-achievements">🏆</div>
@@ -718,10 +722,23 @@
     });
 
     let textTimer = null;
+    let isTyping = false;
+    let currentFullText = "";
+    let currentCallback = null;
+    let currentElement = null;
+
     function typeWriter(element, text, speed, callback) {
+      clearTimeout(textTimer);
       element.innerHTML = "";
       let i = 0;
+      isTyping = true;
+      currentFullText = text;
+      currentCallback = callback;
+      currentElement = element;
       
+      const panel = document.getElementById('vn-panel');
+      if (panel) panel.style.cursor = 'pointer';
+
       function type() {
         if (i < text.length) {
           if (text.charAt(i) === '<') {
@@ -738,16 +755,44 @@
             i++;
           }
           textTimer = setTimeout(type, speed);
-        } else if (callback) {
-          callback();
+        } else {
+          isTyping = false;
+          if (panel) panel.style.cursor = 'default';
+          const cb = currentCallback;
+          currentCallback = null;
+          if (cb) cb();
         }
       }
       type();
     }
 
+    function skipTypewriter() {
+      if (!isTyping || !currentElement) return;
+      clearTimeout(textTimer);
+      isTyping = false;
+      
+      const panel = document.getElementById('vn-panel');
+      if (panel) panel.style.cursor = 'default';
+
+      currentElement.innerHTML = currentFullText;
+      const cb = currentCallback;
+      currentCallback = null;
+      if (cb) cb();
+    }
+
+    document.getElementById('vn-panel').addEventListener('click', (e) => {
+      if (e.target.closest('.vn-opt') || e.target.closest('.vn-mini') || e.target.closest('.tree-btn')) {
+        return;
+      }
+      if (isTyping) {
+        skipTypewriter();
+      }
+    });
+
     function showScene(sceneKey) {
       unlockAudio(); 
       clearTimeout(textTimer); 
+      isTyping = false;
       
       const node = STORY_NODES[sceneKey];
       if (!node) return;
