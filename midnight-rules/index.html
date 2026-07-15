@@ -1,0 +1,548 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>午夜规则 (Midnight Rules) - 视觉小说式排版原型</title>
+</head>
+<body style="margin:0; padding:0; background:#000; overflow:hidden; width:100vw; height:100vh;">
+
+<!-- 核心改良：移除了固定的长宽限制，100% 完美占满全屏窗口 -->
+<div id="vn" style="position:relative; width:100vw; height:100vh; overflow:hidden; font-family:'Noto Serif SC',Georgia,serif; user-select:none; color:#e8dcc0;">
+  <style>
+    #vn *{box-sizing:border-box;}
+    
+    /* 动态背景大图层：100% 铺满全屏 */
+    #vn-scene{
+      position:absolute;
+      inset:0;
+      background-size: cover;
+      background-position: center;
+      transition: background-image 0.6s ease-in-out;
+      z-index: 1;
+    }
+    
+    /* 强烈的电影级四周暗角，烘托气氛 */
+    #vn-vig{
+      position:absolute;
+      inset:0;
+      box-shadow:inset 0 0 180px 60px #000;
+      pointer-events:none;
+      z-index: 2;
+    }
+    
+    /* 顶灯闪烁 */
+    #vn-flick{position:absolute;inset:0;background:rgba(190,150,80,.03);animation:vnf 6s infinite;pointer-events:none;z-index: 3;}
+    @keyframes vnf{0%,46%,52%,100%{opacity:1}48%{opacity:.2}50%{opacity:.7}}
+    
+    /* 顶部UI */
+    #vn-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:20px 30px;z-index:8;}
+    #vn-status{font-size:13px;letter-spacing:.1em;color:#8a7d60;text-shadow: 0 2px 4px #000;}
+    #vn-status b{color:#5a9a5a;}
+    #vn-skip{font-size:14px;letter-spacing:.15em;color:#c8b488;border:1px solid #4a3f28;border-radius:20px;padding:6px 20px;cursor:pointer;background:rgba(0,0,0,.6);backdrop-filter: blur(4px);}
+    
+    #vn-side{position:absolute;left:30px;top:85px;z-index:8;display:flex;flex-direction:column;gap:14px;}
+    .vn-ic{width:44px;height:44px;border-radius:8px;border:1px solid #4a3f28;background:rgba(10,8,5,.6);color:#b8a678;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;backdrop-filter: blur(2px);}
+    
+    /* 对话框整体外容器：固定悬浮在全屏最底部 */
+    #vn-box{
+      position:absolute;
+      left:30px;
+      right:30px;
+      bottom:30px;
+      height: 38%; /* 稳定占据屏幕下方的 1/3 多一点，给选项留出充裕空间 */
+      z-index:9;
+      display:flex;
+      flex-direction:column;
+    }
+    #vn-name{
+      display:inline-block;
+      align-self: flex-start;
+      background:linear-gradient(90deg,#2a1c0c,#4a2a10);
+      border:1px solid #7a5a2a;
+      color:#e8c878;
+      font-size:14px;
+      letter-spacing:.2em;
+      padding:6px 24px;
+      border-radius:12px 12px 0 0;
+      margin-bottom:-1px;
+      margin-left:20px;
+      position:relative;
+      z-index:10;
+      box-shadow:0 -4px 10px rgba(0,0,0,0.5);
+    }
+    
+    /* 核心修复：更宽广的横向通栏面板，独立排开绝不堆叠 */
+    #vn-panel{
+      flex: 1;
+      background:linear-gradient(180deg,rgba(14,11,8,.93),rgba(6,5,4,.97));
+      border:1px solid #5a4a2a;
+      border-radius:14px;
+      padding:24px 30px;
+      backdrop-filter:blur(5px);
+      box-shadow:0 15px 50px rgba(0,0,0,0.9),inset 0 0 25px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: row; 
+      gap: 35px;
+    } 
+    
+    /* 剧情文本区：左侧分栏，清晰易读 */
+    #vn-line{
+      flex: 1.3;
+      color:#e2d5b5;
+      font-size:16px;
+      line-height: 1.85;
+      text-shadow:0 1px 5px #000;
+      overflow-y: auto;
+      padding-right: 12px;
+    }
+    #vn-line::-webkit-scrollbar { width: 4px; }
+    #vn-line::-webkit-scrollbar-thumb { background: #5a4a2a; border-radius: 2px; }
+    #vn-line .r { color:#ff6b6b; font-weight: bold; }
+    #vn-line .g { color:#64dfdf; font-weight: bold; }
+    
+    /* 选项动作区：右侧分栏，不限制高度限制，能完整容纳超多按钮 */
+    #vn-opts{
+      flex: 1;
+      display:flex;
+      flex-direction:column;
+      justify-content: flex-start; /* 从上往下依次排开，确保容纳全部选项 */
+      gap:10px;
+      overflow-y: auto;
+      padding-right: 4px;
+    } 
+    #vn-opts::-webkit-scrollbar { width: 0px; } /* 隐藏内部滚动条 */
+    
+    .vn-opt{
+      background:linear-gradient(90deg,rgba(35,26,15,.85),rgba(20,15,10,.85));
+      border:1px solid #4a3a20;
+      border-radius:8px;
+      padding:12px 18px;
+      color:#cbb98a;
+      font-family:inherit;
+      font-size:14px;
+      cursor:pointer;
+      transition:.2s;
+      text-align:left;
+      width:100%;
+      line-height: 1.4;
+      flex-shrink: 0; /* 绝对防止按钮自身高度被缩水 */
+    }
+    .vn-opt:hover{border-color:#c8a24d;color:#f4e8c8;box-shadow:0 0 12px rgba(200,160,80,.25);transform: translateX(3px);}
+    .vn-opt.danger:hover{border-color:#b52626;color:#ff7a7a;box-shadow:0 0 12px rgba(180,30,30,.35);}
+    
+    /* 死亡/通关重置键终极特效 */
+    .vn-opt.ultimate-restart {
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+      background: linear-gradient(180deg, #420a0a, #1a0505) !important;
+      border: 2px solid #ff3333 !important;
+      color: #ffcccc !important;
+      padding: 18px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 0 30px rgba(255, 51, 51, 0.6) !important;
+      animation: bloodPulse 1.6s infinite alternate;
+    }
+    @keyframes bloodPulse {
+      0% { box-shadow: 0 0 15px rgba(255, 51, 51, 0.4); border-color: #cc2222; }
+      100% { box-shadow: 0 0 35px rgba(255, 51, 51, 0.8); border-color: #ff5555; }
+    }
+    
+    #vn-auto{position:absolute;right:30px;bottom:100%;margin-bottom:6px;display:flex;gap:8px;}
+    .vn-mini{font-size:11px;color:#a89670;border:1px solid #4a3f28;border-radius:14px;padding:4px 14px;background:rgba(0,0,0,.5);cursor:pointer;}
+    
+    /* 死亡爆发层 */
+    #vn-death{position:absolute;inset:0;z-index:20;opacity:0;pointer-events:none;transition:opacity .1s;
+      background:radial-gradient(circle at 50% 45%,rgba(170,15,15,.3),rgba(15,0,0,.97));}
+    #vn-death.on{opacity:1;animation:vns .5s;}
+    @keyframes vns{0%,100%{transform:translate(0,0)}25%{transform:translate(-4px,2px)}50%{transform:translate(3px,-3px)}75%{transform:translate(-2px,-1px)}}
+  </style>
+
+  <div id="vn-scene"></div> 
+  <div id="vn-flick"></div>
+  <div id="vn-vig"></div>
+
+  <div id="vn-top">
+    <div id="vn-status">系统状态: <b id="vn-dot">●</b> <span id="status-txt">安全</span></div>
+    <div id="vn-skip" id="btn-top-reset">重置 ↻</div>
+  </div>
+  <div id="vn-side">
+    <div class="vn-ic" onclick="alert('《午夜规则》\n1. 遵守规则活下去\n2. 相信你的直觉\n3. 不要和红衣乘客说话。')">📖</div>
+  </div>
+
+  <div id="vn-box">
+    <div id="vn-name">车厢一 · 4:44</div>
+    <div id="vn-panel">
+      <div id="vn-auto"><span class="vn-mini" id="toggle-ambient">音频: 关</span></div>
+      <div id="vn-line">这节车厢坐满了人，却安静得没有一丝呼吸声。只有最角落那位穿<span class="r">红</span>的，背对着你——那片红，比周围<span class="r">暗了一号</span>。</div>
+      <div id="vn-opts">
+        <!-- 动态生成选项 -->
+      </div>
+    </div>
+  </div>
+
+  <div id="vn-death"></div>
+
+  <script>
+  (function(){
+    // ==========================================
+    // 1. Web Audio API 轨道环境音合成器
+    // ==========================================
+    class MidnightSynth {
+        constructor() {
+            this.ctx = null;
+            this.baseHum = [];
+            this.baseHumGain = null;
+            this.isPlaying = false;
+            this.screechTimer = null;
+            this.clickTimer = null;
+            this.activeOscillators = [];
+        }
+
+        init() {
+            if (this.ctx) return;
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn("当前浏览器不支持 Web Audio API", e);
+            }
+        }
+
+        start() {
+            this.init();
+            if (!this.ctx) return;
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+            if (this.isPlaying) return;
+
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const humGain = this.ctx.createGain();
+            
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(55, this.ctx.currentTime); 
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(55.3, this.ctx.currentTime); 
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(80, this.ctx.currentTime);
+            humGain.gain.setValueAtTime(0.06, this.ctx.currentTime); 
+
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(humGain);
+            humGain.connect(this.ctx.destination);
+
+            osc1.start();
+            osc2.start();
+
+            const lfo = this.ctx.createOscillator();
+            const lfoGain = this.ctx.createGain();
+            lfo.frequency.setValueAtTime(0.4, this.ctx.currentTime); 
+            lfoGain.gain.setValueAtTime(0.015, this.ctx.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(humGain.gain);
+            lfo.start();
+
+            this.baseHum = [osc1, osc2, lfo];
+            this.baseHumGain = humGain;
+            this.isPlaying = true;
+
+            this.scheduleClickClack();
+            this.scheduleScreech();
+        }
+
+        stop() {
+            if (!this.isPlaying) return;
+            if (this.baseHum.length) {
+                this.baseHum.forEach(osc => { try { osc.stop(); } catch(e){} });
+                this.baseHum = [];
+            }
+            if (this.activeOscillators.length) {
+                this.activeOscillators.forEach(osc => { try { osc.stop(); } catch(e){} });
+                this.activeOscillators = [];
+            }
+            clearTimeout(this.screechTimer);
+            clearTimeout(this.clickTimer);
+            this.isPlaying = false;
+        }
+
+        scheduleClickClack() {
+            if (!this.isPlaying) return;
+            this.clickTimer = setTimeout(() => {
+                this.playClickClackSound();
+                this.scheduleClickClack();
+            }, 2500 + Math.random() * 2000);
+        }
+
+        playClickClackSound() {
+            if (!this.ctx || this.ctx.state === 'suspended') return;
+            const now = this.ctx.currentTime;
+            this.triggerClick(now, 0.04);
+            this.triggerClick(now + 0.12, 0.03);
+            this.triggerClick(now + 0.35, 0.03);
+        }
+
+        triggerClick(time, volume) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(65, time);
+            osc.frequency.exponentialRampToValueAtTime(10, time + 0.06);
+            gain.gain.setValueAtTime(volume, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            this.activeOscillators.push(osc);
+            osc.start(time);
+            osc.stop(time + 0.07);
+        }
+
+        scheduleScreech() {
+            if (!this.isPlaying) return;
+            this.screechTimer = setTimeout(() => {
+                this.playScreechSound();
+                this.scheduleScreech();
+            }, 14000 + Math.random() * 10000);
+        }
+
+        playScreechSound() {
+            if (!this.ctx || this.ctx.state === 'suspended') return;
+            const now = this.ctx.currentTime;
+            const duration = 1.0 + Math.random() * 1.0;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(900, now);
+            osc.frequency.linearRampToValueAtTime(550, now + duration);
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(750, now);
+            filter.Q.setValueAtTime(4, now);
+
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.012, now + 0.3); 
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration); 
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            this.activeOscillators.push(osc);
+            osc.start(now);
+            osc.stop(now + duration);
+        }
+    }
+
+    const synth = new MidnightSynth();
+
+    // ==========================================
+    // 2. 本地剧情与图片映射数据
+    // ==========================================
+    const STORY_NODES = {
+      car1_init: {
+        bg: "red_figure.png",
+        text: "你不记得自己是什么时候上的车。\n\n车厢里的挂钟停在 4:44。窗外是看不见尽头的漆黑，列车却一直在动，广播里的女声隔一会儿就响一次，温柔得像是在念一首超度的安魂曲。\n\n这节车厢坐满了人，却安静得没有一丝呼吸声。所有人都低着头仿佛在打瞌睡。只有角落那一个，穿着一身红，背对着你。那身红，比周围暗了一号。",
+        options: [
+          { text: "🔍 借着昏暗的灯光，摸一摸座椅下压着的东西", next: "car1_search" },
+          { text: "🚪 离红衣人远点，拉开连接门去下一节车厢", next: "car2_transition" },
+          { text: "🚨 走过去，拍拍红衣乘客的肩膀问句路", next: "death_red" }
+        ]
+      },
+      car1_search: {
+        bg: "subway_bg.png",
+        text: "你在座椅夹缝下摸到了一张揉成一团的碎纸条。上面写着一行字：\n\n『……如果推车来的时候，千万不要买票。因为他们卖的，从来都不是票……』",
+        options: [
+          { text: "🚪 迅速收好纸条，去下一节车厢", next: "car2_transition" },
+          { text: "🚨 忽略警告，走过去拍拍红衣乘客的肩膀", next: "death_red" }
+        ]
+      },
+      car2_transition: {
+        bg: "tunnel_bg.png",
+        text: "你拉开沉重的舱门，踏入了两节车厢剧烈晃动的连接处。风在钢骨缝隙中哭嚎，车窗外黑色的电缆仿佛无数条挣扎的虫子，正以极快的速度向后倒退……",
+        options: [
+          { text: "🚪 顶住寒风，推开眼前的防撬门进入车厢二", next: "car2_init" }
+        ]
+      },
+      car2_init: {
+        bg: "seller_bg.png",
+        text: "你跨过连接处来到了【第二节车厢】。\n\n这里的空气更冷了，车顶不断渗出黏糊糊的液体，闻起来有一股陈旧的血腥味。\n\n突然，一个推着售货车的乘务员从阴暗处滑行了过来：“要买票吗……有票的人才能下车……”",
+        options: [
+          { text: "💵 看起来很重要，买一张车票", next: "death_seller" },
+          { text: "🚪 拒绝他，直接拉门前往第三节车厢", next: "car3_init" },
+          { text: "🚨 去问车尾那个诡异乘客这个售票员是怎么回事", next: "death_red" }
+        ]
+      },
+      car3_init: {
+        bg: "scratching_window.png",
+        text: "你来到了【第三节车厢】，头顶的灯开始疯狂闪烁！\n车窗外突然有无数只惨白枯槁的手死死贴在玻璃上，发出令人牙酸的疯狂拍击与抓挠声！\n\n突然广播响起：“下一站……天堂站。请下车的旅客准备……”",
+        options: [
+          { text: "🙈 闭上眼睛，紧紧捂住耳朵，什么也不看", next: "car3_heaven_glow" },
+          { text: "🪟 惊慌失措，朝窗外看去寻找逃生出口", next: "death_window" },
+          { text: "🏃 忽略警告，疯狂冲向下一节车厢", next: "death_window" }
+        ]
+      },
+      car3_heaven_glow: {
+        bg: "heaven_station.png",
+        text: "你闭上双眼！强光和刺耳的“天堂站”报站广播几乎穿透了你的耳膜。整节车厢仿佛飘进了耀眼、滚烫却阴凉的白雾之中，窗外全是刺目的白色微尘！\n\n你强忍着想要睁眼窥探的冲动，默数着心跳……",
+        options: [
+          { text: "🚪 听到刹车风管排气声后，慢慢睁开眼挪向前方车厢", next: "car3_heaven_survived" }
+        ]
+      },
+      car3_heaven_survived: {
+        bg: "brake_lever.png",
+        text: "雾气散去。你睁开眼，已经来到了【第四节车厢】。这里一片死寂，前面的【驾驶室】门旁挂着一个巨大的红色【紧急制动阀】。\n\n周围黑暗中似乎有无数冷冰冰的呼吸拍打在你的颈后，引诱你：『回头看吧……看看我们长什么样……』",
+        options: [
+          { text: "🛑 闭上眼睛，凭感觉死死拉下制动阀", next: "win_game" },
+          { text: "👀 睁大眼睛看清局势，再去拉制动阀", next: "death_final" }
+        ]
+      },
+      win_game: {
+        bg: "win_subway.png",
+        text: "【成功逃生 - 破碎梦魇】\n\n刺耳的刹车声响彻整列车厢，那些低语、阴冷和鬼影瞬间化为粉碎。\n\n暖洋洋的阳光洒在你脸上，车门缓缓打开，外面是阳光明媚的普通地铁站。广播里传来干净的声音：『终点站到了，欢迎回家。』",
+        options: []
+      },
+      death_red: {
+        bg: "unspeakable_entity.png",
+        text: "【死亡 - 红色禁忌】\n\n那身红缓缓转了过来。你先看见的不是脸，是笑——一个咧到耳根、却没有眼睛的笑。你感觉自己的身体迅速变冷，也变成了一具无法呼吸、只能低头坐在车厢里的雕塑……",
+        options: []
+      },
+      death_seller: {
+        bg: "unspeakable_entity.png",
+        text: "【死亡 - 车票陷阱】\n\n乘务员咧开嘴笑了，那是一张属于溺死之人的苍白脸庞。你递过去的钱瞬间变成了冥币，你拿到的车票迅速在你的皮肤上蔓延成焦黑的灰烬。你成为了列车的新燃料。",
+        options: []
+      },
+      death_window: {
+        bg: "unspeakable_entity.png",
+        text: "【死亡 - 窥视深渊】\n\n当你望向窗外的一瞬间，车窗上的白手猛地击碎了玻璃！无数冰冷的手瞬间死死扼住了你的喉咙，将你拽入了窗外无尽的深渊黑暗中……",
+        options: []
+      },
+      death_final: {
+        bg: "unspeakable_entity.png",
+        text: "【死亡 - 功亏一篑】\n\n你睁开了双眼。黑暗中无数张扭曲撕裂的鬼脸贴在你眼前，尖叫着冲入你的眼眶。你的手在碰到阀门的一瞬间彻底失去了温度……",
+        options: []
+      }
+    };
+
+    const scene = document.getElementById('vn-scene');
+    const death = document.getElementById('vn-death');
+    const line = document.getElementById('vn-line');
+    const dot = document.getElementById('vn-dot');
+    const statusTxt = document.getElementById('status-txt');
+    const nameTag = document.getElementById('vn-name');
+    const optsBox = document.getElementById('vn-opts');
+    const toggleAmbient = document.getElementById('toggle-ambient');
+    const btnTopReset = document.getElementById('vn-skip');
+
+    function unlockAudio() {
+        synth.init();
+        if (synth.ctx && synth.ctx.state === 'suspended') {
+            synth.ctx.resume();
+        }
+    }
+
+    function triggerReset() {
+      death.classList.remove('on');
+      dot.style.color = '#5a9a5a';
+      statusTxt.innerText = '安全';
+      showScene('car1_init');
+    }
+
+    btnTopReset.onclick = triggerReset;
+
+    toggleAmbient.addEventListener('click', () => {
+        unlockAudio(); 
+        if (synth.isPlaying) {
+            synth.stop();
+            toggleAmbient.innerText = "音频: 关";
+        } else {
+            synth.start();
+            toggleAmbient.innerText = "音频: 开";
+        }
+    });
+
+    function showScene(sceneKey) {
+      unlockAudio(); 
+      const node = STORY_NODES[sceneKey];
+      if (!node) return;
+
+      if (node.bg) {
+        scene.style.backgroundImage = `url('${node.bg}')`;
+      }
+
+      // 死亡逻辑
+      if (sceneKey.startsWith('death')) {
+        death.classList.add('on');
+        dot.style.color = '#e02626';
+        statusTxt.innerText = '异常/已死亡';
+        line.innerHTML = `<span class="r">${node.text}</span>`;
+        
+        optsBox.innerHTML = '<button class="vn-opt danger ultimate-restart" id="btn-restart">⚠️ 坠入深渊，点击此处循环重置 ⚠️</button>';
+        document.getElementById('btn-restart').onclick = triggerReset;
+
+        if (synth.isPlaying && synth.ctx) {
+            const now = synth.ctx.currentTime;
+            const osc = synth.ctx.createOscillator();
+            const gain = synth.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(10, now + 1.0);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+            osc.connect(gain);
+            gain.connect(synth.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 1.1);
+        }
+        return;
+      }
+
+      if (sceneKey === 'win_game') {
+        dot.style.color = '#5a9a5a';
+        statusTxt.innerText = '已安全';
+        line.innerHTML = `<span class="g">${node.text}</span>`;
+        optsBox.innerHTML = '<button class="vn-opt ultimate-restart" style="border-color:#5a9a5a !important; box-shadow: 0 0 20px rgba(100,223,223,0.6) !important; background: linear-gradient(180deg, #0a3a3a, #051a1a) !important;" id="btn-win-restart">✨ 成功生还！再来一局 ✨</button>';
+        document.getElementById('btn-win-restart').onclick = triggerReset;
+        return;
+      }
+
+      // 车厢名称同步
+      if (sceneKey === 'car1_init' || sceneKey === 'car1_search') {
+        nameTag.innerText = '车厢一 · 4:44';
+      } else if (sceneKey === 'car2_transition') {
+        nameTag.innerText = '车门交接处';
+      } else if (sceneKey === 'car2_init') {
+        nameTag.innerText = '车厢二 · 4:46';
+      } else if (sceneKey === 'car3_init' || sceneKey === 'car3_heaven_glow') {
+        nameTag.innerText = '车厢三 · 4:48';
+      } else if (sceneKey === 'car3_heaven_survived') {
+        nameTag.innerText = '车厢四 · 4:50';
+      }
+
+      line.innerHTML = node.text.replace(/\n/g, '<br>');
+
+      // 生成选项
+      optsBox.innerHTML = '';
+      node.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'vn-opt';
+        if (opt.text.includes('🚨') || opt.text.includes('💵')) {
+          btn.classList.add('danger');
+        }
+        btn.innerText = opt.text;
+        btn.onclick = () => showScene(opt.next);
+        optsBox.appendChild(btn);
+      });
+      
+      document.getElementById('vn-panel').scrollTop = 0;
+    }
+
+    showScene('car1_init');
+  })();
+  </script>
+</div>
+</body>
+</html>
