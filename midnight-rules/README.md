@@ -4,7 +4,7 @@
 
 ---
 
-## 🎮 游戏在线试玩（演示链接）*   **在线体验网址：** [https://dontworrythatiwillhurt.github.io/midnight-rules/midnight-rules/](https://dontworrythatiwillhurt.github.io/midnight-rules/midnight-rules/)
+[## 🎮 游戏在线试玩（演示链接）*   **在线体验网址：**https://dontworrythatiwillhurt.github.io/midnight-rules/midnight-rules/
 
 > 💡 **玩家测试温馨提示：** 
 > 现代浏览器由于安全限制，要求网页必须有用户交互才能播放声音。
